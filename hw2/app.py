@@ -69,7 +69,12 @@ def source_names(documents: list[Document]) -> list[str]:
 	"""Return unique source labels in the order they first appear."""
 	sources = []
 	for document in documents:
-		source = document.metadata.get("source", "Unknown source")
+		source = (
+			document.metadata.get("source")
+			or document.metadata.get("file_path")
+			or document.metadata.get("path")
+			or "Unknown source"
+		)
 		if source not in sources:
 			sources.append(source)
 	return sources
