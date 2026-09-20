@@ -82,7 +82,12 @@ def source_names(documents: list[Document]) -> list[str]:
 
 vectorstore = create_vectorstore()
 retriever = vectorstore.as_retriever()
-llm = ChatGoogleGenerativeAI(model=required_environment_variable(MODEL_ENV_VAR))
+llm = ChatGoogleGenerativeAI(
+    model=required_environment_variable(MODEL_ENV_VAR),
+    project=required_environment_variable(PROJECT_ENV_VAR),
+    location=os.getenv("GOOGLE_CLOUD_LOCATION", DEFAULT_VERTEX_LOCATION),
+    vertexai=True,
+)
 prompt = ChatPromptTemplate.from_template(
 	"""You are a helpful assistant for question-answering over a collection of documents.
 Answer using only the retrieved context below. If the context does not contain
@@ -128,7 +133,3 @@ async def on_message(message: cl.Message) -> None:
 	)
 	sources = "\n".join(f"- {source}" for source in source_names(documents))
 	await cl.Message(content=f"{answer}\n\n**Sources**\n{sources}").send()
-
-
-if __name__ == "__main__":
-	cl.run()
