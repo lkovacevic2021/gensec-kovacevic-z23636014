@@ -1,4 +1,4 @@
-"""Command-line foundation for the Homework 3 Cybersecurity Research Agent."""
+"""Command-line Cybersecurity Research Agent for Homework 3."""
 
 import argparse
 import os
@@ -9,6 +9,7 @@ from pathlib import Path
 
 import httpx
 from dotenv import load_dotenv
+from langchain.agents import create_agent
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.tools import tool
 
@@ -21,6 +22,15 @@ MAX_COMMAND_OUTPUT_CHARACTERS = 4000
 NVD_API_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 NVD_REQUEST_TIMEOUT_SECONDS = 10
 CVE_ID_PATTERN = re.compile(r"^CVE-\d{4}-\d{4,}$", re.IGNORECASE)
+CYBERSECURITY_SYSTEM_PROMPT = (
+	"You are a concise cybersecurity research assistant. Use lookup_cve to "
+	"retrieve authoritative NVD details for specific CVE IDs. Use terminal only "
+	"for simple local environment diagnostics, such as checking software versions. "
+	"This is a Windows environment; use 'python' (not 'python3') for Python commands. "
+	"Answer general questions directly without tools when they are not needed. "
+	"Distinguish verified tool results from general knowledge, and never invent "
+	"tool output or CVE details."
+)
 
 
 def required_environment_variable(name: str) -> str:
@@ -50,6 +60,7 @@ def create_chat_model() -> ChatGoogleGenerativeAI:
 	description=(
 		"Run one local terminal command to inspect the Homework 3 environment. "
 		"Use for simple diagnostics such as checking Python or Git versions. "
+		"This is Windows: use 'python' rather than 'python3' for Python commands. "
 		"Commands run in hw3 without a shell; pipes and shell operators are not supported."
 	),
 )
@@ -195,15 +206,50 @@ def test_cve_tool(cve_id: str) -> None:
 	print(cve_lookup_tool.invoke({"cve_id": cve_id}))
 
 
+def create_research_agent(model: ChatGoogleGenerativeAI):
+	"""Create the tool-calling cybersecurity agent around the Gemini model."""
+	return create_agent(
+		model=model,
+		tools=[terminal_tool, cve_lookup_tool],
+		system_prompt=CYBERSECURITY_SYSTEM_PROMPT,
+	)
+
+
+def human_readable_text(content: object) -> str:
+	"""Extract displayable text from plain or structured model content."""
+	if isinstance(content, str):
+		return content.strip()
+	if isinstance(content, dict):
+		content_blocks = [content]
+	elif isinstance(content, list):
+		content_blocks = content
+	else:
+		return ""
+
+	text_parts = []
+	for block in content_blocks:
+		if isinstance(block, str):
+			text = block
+		elif isinstance(block, dict):
+			text = block.get("text", "")
+		else:
+			continue
+		if isinstance(text, str) and text.strip():
+			text_parts.append(text.strip())
+	return "\n".join(text_parts)
+
+
 def run_chat() -> None:
-	"""Run a simple interactive chat loop with the configured Gemini model."""
+	"""Run an interactive chat loop with the tool-calling research agent."""
 	load_dotenv(Path(__file__).with_name(".env"))
 	try:
 		model = create_chat_model()
+		agent = create_research_agent(model)
 	except RuntimeError as error:
 		raise SystemExit(str(error)) from error
 
-	print("Cybersecurity Research Agent model check. Type 'quit' or 'exit' to stop.")
+	print("Cybersecurity Research Agent. Type 'quit' or 'exit' to stop.")
+	conversation = []
 	while True:
 		try:
 			user_message = input("You: ").strip()
@@ -217,8 +263,28 @@ def run_chat() -> None:
 		if not user_message:
 			continue
 
-		response = model.invoke(user_message)
-		print(f"Gemini: {response.content}\n")
+		conversation.append({"role": "user", "content": user_message})
+		try:
+			result = agent.invoke({"messages": conversation})
+		except Exception as error:
+			conversation.pop()
+			print(f"Agent error: {error}\nPlease try again.\n")
+			continue
+
+		conversation = result.get("messages", conversation)
+		assistant_messages = [
+			message
+			for message in conversation
+			if getattr(message, "type", None) == "ai"
+		]
+		if assistant_messages:
+			answer = human_readable_text(assistant_messages[-1].content)
+			if answer:
+				print(f"Agent: {answer}\n")
+			else:
+				print("Agent returned no text response. Please try again.\n")
+		else:
+			print("Agent returned no response. Please try again.\n")
 
 
 def main() -> None:
