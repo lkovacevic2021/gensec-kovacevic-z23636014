@@ -1,0 +1,15 @@
+[project]
+name = "gensec-homework3"
+version = "0.1.0"
+description = "Cybersecurity Research Agent for Generative AI Security Homework 3"
+requires-python = ">=3.11"
+dependencies = [
+    "chainlit",
+    "httpx",
+    "langchain",
+    "langchain-google-genai",
+    "python-dotenv",
+]
+
+[tool.uv]
+package = false
