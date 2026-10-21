@@ -79,8 +79,9 @@ class MCPToolTests(unittest.IsolatedAsyncioTestCase):
                 {
                     "title": "Cell biology",
                     "content": (
-                        "Mitochondria generate energy for the cell. "
-                        "Ribosomes build proteins."
+                        "The nucleus stores DNA and helps regulate gene expression. "
+                        "Mitochondria convert energy from food into ATP through "
+                        "cellular respiration."
                     ),
                 },
             )
@@ -91,8 +92,25 @@ class MCPToolTests(unittest.IsolatedAsyncioTestCase):
             )
             questions = await client.call_tool(
                 "generate_practice_questions",
-                {"note_id": note_id, "count": 2},
+                {"note_id": note_id, "count": 3},
             )
 
         self.assertEqual(search.structured_content["result"][0]["id"], note_id)
-        self.assertEqual(len(questions.structured_content["result"]), 2)
+        generated = questions.structured_content["result"]
+        self.assertEqual(len(generated), 3)
+        self.assertEqual(
+            len({item["question"] for item in generated}),
+            3,
+        )
+        self.assertIn(
+            "What does the nucleus store?",
+            [item["question"] for item in generated],
+        )
+        self.assertIn(
+            "What does the nucleus help regulate?",
+            [item["question"] for item in generated],
+        )
+        self.assertNotIn(
+            "What does the note say about",
+            "\n".join(item["question"] for item in generated),
+        )

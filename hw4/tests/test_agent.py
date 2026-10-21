@@ -9,7 +9,12 @@ from types import SimpleNamespace
 from google.genai import types
 from mcp import Client
 
-from study_assistant.agent import StudyAssistantAgent, _server_parameters
+from study_assistant.agent import (
+    StudyAssistantAgent,
+    _filesystem_tool_arguments,
+    _server_parameters,
+)
+from study_assistant.filesystem_client import STUDY_FILES_DIRECTORY
 
 
 def tool_definition(name: str) -> SimpleNamespace:
@@ -92,6 +97,40 @@ class FakeModel:
 class StudyAssistantAgentTests(unittest.IsolatedAsyncioTestCase):
     """Verify Gemini's choices route across both MCP servers."""
 
+    def test_filesystem_arguments_resolve_relative_and_absolute_root_prefixes(self) -> None:
+        self.assertEqual(
+            _filesystem_tool_arguments(
+                "read_text_file",
+                {"path": "study_files/study_files/cell-biology.md"},
+            ),
+            {"path": "cell-biology.md"},
+        )
+        self.assertEqual(
+            _filesystem_tool_arguments(
+                "read_text_file",
+                {
+                    "path": str(
+                        STUDY_FILES_DIRECTORY
+                        / "study_files"
+                        / "cell-biology.md"
+                    )
+                },
+            ),
+            {"path": "cell-biology.md"},
+        )
+        self.assertEqual(
+            _filesystem_tool_arguments(
+                "read_multiple_files",
+                {
+                    "paths": [
+                        "study_files/cell-biology.md",
+                        "other-notes.md",
+                    ]
+                },
+            ),
+            {"paths": ["cell-biology.md", "other-notes.md"]},
+        )
+
     async def test_model_coordinates_read_save_and_question_tools(self) -> None:
         filesystem = FakeMCPClient(
             [tool_definition("read_text_file"), tool_definition("write_file")],
@@ -108,7 +147,7 @@ class StudyAssistantAgentTests(unittest.IsolatedAsyncioTestCase):
             [
                 function_response(
                     "read_text_file",
-                    {"path": "cell-biology.md"},
+                    {"path": "study_files/study_files/cell-biology.md"},
                 ),
                 function_response(
                     "save_note",
@@ -141,6 +180,10 @@ class StudyAssistantAgentTests(unittest.IsolatedAsyncioTestCase):
             ["read_text_file"],
         )
         self.assertEqual(
+            filesystem.calls[0][1]["path"],
+            "cell-biology.md",
+        )
+        self.assertEqual(
             [name for name, _ in notes.calls],
             ["save_note", "generate_practice_questions"],
         )
@@ -159,6 +202,14 @@ class StudyAssistantAgentTests(unittest.IsolatedAsyncioTestCase):
             by_alias=True,
         )
         self.assertNotIn("title", schema["properties"]["path"])
+        self.assertIn(
+            "relative to the allowed study_files root",
+            declarations_by_name["read_text_file"].description,
+        )
+        self.assertIn(
+            'never prefix paths with "study_files/"',
+            model.requests[0]["config"].system_instruction,
+        )
         self.assertEqual(
             sum("[Filesystem MCP]" in line or "[Study Notes MCP]" in line for line in printed),
             3,

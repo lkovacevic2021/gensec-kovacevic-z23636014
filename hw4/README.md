@@ -30,6 +30,12 @@ only allowed directory is the absolute `hw4/study_files` path, computed by the
 Python client at runtime. On Windows this is passed as a full path such as
 `C:\path\to\hw4\study_files`.
 
+Within MCP tool calls, this directory is already the filesystem root, so use
+paths such as `cell-biology.md` rather than `study_files/cell-biology.md`. The
+agent tells Gemini this explicitly and strips any redundant leading
+`study_files/` prefix before dispatching a relative path; the server's
+`study_files`-only access restriction remains in effect.
+
 ## Configure Gemini on Vertex AI
 
 Enable the Vertex AI API for a Google Cloud project, authenticate with ADC, and
@@ -61,7 +67,7 @@ server and tool as it runs. Type `quit` or `exit` to stop.
 For example, try:
 
 ```text
-Read study_files/cell-biology.md, summarize the key ideas in a few sentences,
+Read cell-biology.md, summarize the key ideas in a few sentences,
 save the summary as a note titled "Cell biology review", then generate three
 practice questions from that saved note and show me the questions and answers.
 ```
@@ -82,7 +88,7 @@ uv run study-assistant-filesystem-check
 
 The Python client launches the installed npm package over standard I/O,
 discovers its tools, asks the server to report its allowed directories, and
-reads `study_files/cell-biology.md` with `read_text_file`. The check prints the
+reads the sample document with `read_text_file`. The check prints the
 discovered tools, server-reported allowlist, and sample document. It exits with
 an error if the package cannot start, expected tools are missing, or the
 directory is not reported as allowed.
@@ -130,7 +136,10 @@ file to remove locally saved notes.
 - `search_notes(query, limit=10)` finds matching titles or content. The limit
   must be from 1 to 100.
 - `generate_practice_questions(note_id, count=5)` creates recall questions and
-  answers from sentences in an existing note. The count must be from 1 to 10.
+  answers about distinct facts and supporting details in an existing note. It
+  returns up to the requested count (1 to 10), without repeating question
+  prompts; it returns fewer only if the note does not contain enough distinct
+  extractable facts.
 
 Invalid input and database failures are reported as tool errors; the server does
 not silently ignore them.
