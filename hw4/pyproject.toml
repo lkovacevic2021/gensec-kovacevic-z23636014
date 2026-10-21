@@ -1,0 +1,19 @@
+[project]
+name = "study-assistant"
+version = "0.1.0"
+description = "A local-first AI study assistant with an MCP notes server."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "google-genai>=1.75.0,<2",
+    "mcp[cli]>=2.3.0,<3",
+]
+
+[project.scripts]
+study-assistant = "study_assistant.server:main"
+study-assistant-filesystem-check = "study_assistant.filesystem_client:main"
+study-assistant-agent = "study_assistant.agent:main"
+
+[build-system]
+requires = ["uv_build>=0.12.15,<0.13.0"]
+build-backend = "uv_build"

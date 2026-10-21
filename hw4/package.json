@@ -1,0 +1,8 @@
+{
+  "name": "study-assistant-filesystem",
+  "private": true,
+  "description": "Pinned published MCP Filesystem server for the AI Study Assistant",
+  "dependencies": {
+    "@modelcontextprotocol/server-filesystem": "2.0.0"
+  }
+}
