@@ -1,0 +1,50 @@
+Create a Python application called ThreatLens, a security input analyzer, in the hw6 folder of my repository.
+
+Use Streamlit to build a simple web interface where users can paste text or upload a .txt or .log file to scan for suspicious input.
+
+The application should:
+1. Detect common patterns associated with SQL injection, cross-site scripting (XSS), command injection, and path traversal.
+2. Display the detected threat category, severity level, and a short explanation.
+3. Show a summary of the total findings.
+4. Display a clear message when no suspicious patterns are found.
+5. Include a few example inputs for testing.
+
+Security requirements:
+- Treat all user input as untrusted data.
+- Never execute uploaded text or user-provided commands.
+- Do not use eval(), exec(), or shell execution.
+- Limit uploaded file size and handle invalid file encodings safely.
+- Avoid rendering untrusted HTML.
+- Explain that pattern-based detection can produce false positives and miss some attacks.
+
+Create the application in hw6/app.py and add any necessary requirements or README files inside hw6. Do not modify other homework folders.
+
+After generating the application, explain which files you created and how to run it locally.
+
+Review the existing ThreatLens application in hw6 for security issues and improve it without removing its current features.
+
+Specifically:
+1. Fix the file upload limit inconsistency. The interface currently shows a 1 MB limit in the sidebar but Streamlit's uploader displays 200 MB. Configure Streamlit to enforce a 1 MB upload limit and keep the interface consistent.
+2. Ensure uploaded files are validated for size, extension, and UTF-8 encoding. Handle invalid files gracefully without crashing.
+3. Limit the size of pasted text to prevent excessive processing.
+4. Make sure malicious input is never executed or rendered as unsafe HTML.
+5. Add automated tests for SQL injection, XSS, command injection, path traversal, normal text, oversized input, and invalid file content.
+6. Update the README with the security protections and limitations.
+
+Run the tests and fix any failures. Keep all changes inside hw6 and explain what was improved.
+
+The ThreatLens application crashes when I restart Streamlit.
+
+Error: streamlit.errors.StreamlitAPIException: server.maxUploadSize cannot be set on the fly.
+
+The error comes from st.set_option("server.maxUploadSize", 1) in app.py.
+
+Please fix this by removing the invalid runtime setting and configuring the 1 MB upload limit correctly using Streamlit configuration.
+
+Keep the existing file size validation as an additional security measure.
+
+Make sure the application works when launched from the repository root using:
+
+python -m streamlit run hw6/app.py
+
+Run the automated tests and verify that the application starts without errors and enforces the 1 MB upload limit. Update the README if necessary. Do not modify other homework folders.
